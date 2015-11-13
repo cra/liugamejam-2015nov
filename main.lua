@@ -17,8 +17,12 @@ end
 function advance_right(spelare)
     if spelare.x < (love.graphics.getWidth() - spelare.img:getWidth()) then
         spelare.x = spelare.x + 10;
-        spelare.lights[1].enabled = true
     end
+end
+
+function toggle_light(spelare, light_index)
+    cur_state = spelare.lights[light_index].enabled
+    spelare.lights[light_index].enabled = not spelare.lights[light_index].enabled
 end
 
 function advance_left(spelare)
@@ -35,7 +39,7 @@ function love.update(dt)
 
     if love.keyboard.isDown("n", 'right') then
         advance_right(sp1)
-        button_was_pressed = true
+        toggle_light(sp1, 1)
     end
     if love.keyboard.isDown("h", 'left') then
         advance_left(sp1)
