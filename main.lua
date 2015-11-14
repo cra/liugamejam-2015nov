@@ -1,19 +1,19 @@
 FSM = require("LuaFSM/fsm")
 controls = require("spelare_controls")
 
-sp1 = {x = 20, y = 100, img = nil,
+sp1 = {x = 20, y = 100, step = 20, img = nil,
     lights = {
-            {x = 100, y = 10, enabled = false, timer = nil},
-            {x = 140, y = 10, enabled = false, timer = nil},
-            {x = 180, y = 10, enabled = false, timer = nil},
-            {x = 220, y = 10, enabled = false, timer = nil},
+            {x = 100, y = 20, enabled = false, timer = nil},
+            {x = 140, y = 20, enabled = false, timer = nil},
+            {x = 180, y = 20, enabled = false, timer = nil},
+            {x = 220, y = 20, enabled = false, timer = nil},
         },
     lights_radius = 10,
     lights_color = {0, 255, 0, 255},
     light_timer_max = 1, -- should be probably outside
     idle_timer = nil,
 }
-idle_timer_max = 0.5
+idle_timer_max = sp1.light_timer_max / 2
 idle_timer = nil
 
 -- light controls
@@ -44,27 +44,34 @@ end
 function action2()
     toggle_light(sp1, 2)
 end
+function action3()
+    toggle_light(sp1, 3)
+end
+function action4()
+    toggle_light(sp1, 4)
+end
 
 function action_wrong_input()
-    print("Flashing the lights. Wrong input. Going to q0")
+    print("Flashing the lights. Wrong input. Going to 'initial'")
     turn_off_light(sp1, 1)
     turn_off_light(sp1, 2)
 end
 
 function action_move()
-    print("Got the combo right")
+    controls.advance_right(sp1)
 end
 
 lights_sp1_state_transition_table = {
 -- old state   event      new state    action
-    {'q0', 'input_right', 'q1', action1},
+    {'initial', 'input_right', 'q1', action1},
 
     {'q1', 'input_left', 'q2', action2},
     {'q1', 'input_right', 'q3', action_wrong_input},
 
-    {'q2', 'idling', 'q4', action_move},
+    {'q2', 'input_up', 'q3', action3},
+    {'q3', 'input_down', 'right_sequence', action4},
 
-    {'q3', 'input_right', 'q0', action_wrong_input},
+    {'right_sequence', 'idling', 'initial', action_move},
 }
 
 -- Game logic
@@ -72,7 +79,7 @@ function love.load(arg)
     sp1.img = love.graphics.newImage("images/baby_kangaroo.png")
 
     lights_sp1_fsm = FSM.new(lights_sp1_state_transition_table)
-    lights_sp1_fsm:set('q0')
+    lights_sp1_fsm:set('initial')
 
     sp1.idle_timer = 0
 end
@@ -83,29 +90,28 @@ function love.update(dt)
         love.event.push('quit')
     end
 
+    if lights_sp1_fsm:get() == 'right_sequence' then
+        lights_sp1_fsm:fire('idling')
+    end
+
     if love.keyboard.isDown("n", 'right') then
-        controls.advance_right(sp1)
         if not sp1.lights[1].enabled then
             lights_sp1_fsm:fire('input_right')
         end
     end
     if love.keyboard.isDown("h", 'left') then
-        controls.advance_left(sp1)
         if not sp1.lights[2].enabled then
             lights_sp1_fsm:fire('input_left')
         end
     end
-
     if love.keyboard.isDown("c", 'up') then
-        sp1.y = sp1.y - 10;
         if not sp1.lights[3].enabled then
-            toggle_light(sp1, 3)
+            lights_sp1_fsm:fire('input_up')
         end
     end
     if love.keyboard.isDown("t", 'down') then
-        sp1.y = sp1.y + 10;
         if not sp1.lights[4].enabled then
-            toggle_light(sp1, 4)
+            lights_sp1_fsm:fire('input_down')
         end
     end
 
