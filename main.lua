@@ -1,20 +1,18 @@
 FSM = require("LuaFSM/fsm")
 controls = require("spelare_controls")
 
-sp1 = {x = 20, y = 100, step = 20, img = nil,
+sp1 = {x = 10, y = 128, step = 20, img = nil,
     lights = {
-            {x = 100, y = 20, enabled = false, timer = nil},
-            {x = 140, y = 20, enabled = false, timer = nil},
-            {x = 180, y = 20, enabled = false, timer = nil},
-            {x = 220, y = 20, enabled = false, timer = nil},
-        },
-    lights_radius = 10,
+        {x = 100, y = 20, enabled = false, timer = nil, img = nil},
+        {x = 160, y = 20, enabled = false, timer = nil, img = nil},
+        {x = 220, y = 20, enabled = false, timer = nil, img = nil},
+        {x = 280, y = 20, enabled = false, timer = nil, img = nil},
+    },
+    lights_radius = 16,
+    lights_border_color = {100, 100, 100, 255},
     lights_color = {0, 255, 0, 255},
     light_timer_max = 1, -- should be probably outside
-    idle_timer = nil,
 }
-idle_timer_max = sp1.light_timer_max / 2
-idle_timer = nil
 
 -- light controls
 
@@ -74,14 +72,23 @@ lights_sp1_state_transition_table = {
     {'right_sequence', 'idling', 'initial', action_move},
 }
 
--- Game logic
+-- Init
 function love.load(arg)
+    -- load assets
     sp1.img = love.graphics.newImage("images/baby_kangaroo.png")
+    sp1.lights[1].img = love.graphics.newImage("images/right_arrow_key.png")
+    sp1.lights[2].img = love.graphics.newImage("images/left_arrow_key.png")
+    sp1.lights[3].img = love.graphics.newImage("images/up_arrow_key.png")
+    sp1.lights[4].img = love.graphics.newImage("images/down_arrow_key.png")
 
+    road = {}
+    road.img = love.graphics.newImage("images/road_itself.png")
+    road.y = (love.graphics.getHeight() - road.img:getHeight()) / 2
+    road.img_width = road.img:getWidth()
+
+    -- Wind up our finite state machine
     lights_sp1_fsm = FSM.new(lights_sp1_state_transition_table)
     lights_sp1_fsm:set('initial')
-
-    sp1.idle_timer = 0
 end
 
 -- Updating
@@ -128,24 +135,50 @@ end
 
 -- Drawing
 function love.draw(dt)
-    love.graphics.print("Run baby kangaroo, run", 300, 10)
-    --love.graphics.setBackgroundColor(100, 100, 100)
-    love.graphics.print("kangaroo at (" .. tostring(sp1.x) .. ", " .. tostring(sp1.y) .. ")", 300, 25)
-    love.graphics.print("Lights1 FSM state: " .. lights_sp1_fsm:get(), 300, 40)
+    love.graphics.setBackgroundColor(238, 195, 154)
+    local cr, cg, cb, ca = love.graphics.getColor()
+    love.graphics.setColor(0, 0, 0, 255)
+
+    love.graphics.print("kangaroo at (" .. tostring(sp1.x) .. ", " .. tostring(sp1.y) .. ")", 600, 10)
+    love.graphics.print("Lights FSM state: " .. lights_sp1_fsm:get(), 600, 25)
+    love.graphics.setColor(cr, cg, cb, ca)
+
+    local x = 0
+    local Xmax = love.graphics.getWidth()
+    while x < Xmax do
+        love.graphics.draw(road.img, x, road.y)
+        x = x + road.img_width
+    end
 
     love.graphics.draw(sp1.img, sp1.x, sp1.y)
 
+    -- draw all the lights and a keymap
     for i, light in ipairs(sp1.lights) do
         local x = light.x
+        local y = light.y
         local r = sp1.lights_radius
-        love.graphics.circle('line', x, 10, r, 20)
 
+        -- lights border
+        local cr, cg, cb, ca = love.graphics.getColor()
+        love.graphics.setColor(sp1.lights_border_color)
+        love.graphics.circle('line', x, y, r, 20)
+        love.graphics.setColor(cr, cg, cb, ca)
+
+        -- filling
         if sp1.lights[i].enabled then
             local cr, cg, cb, ca = love.graphics.getColor()
             love.graphics.setColor(sp1.lights_color)
-            love.graphics.circle('fill', x, 10, r - 2, 20)
+            love.graphics.circle('fill', x, y, r - 2, 20)
             love.graphics.setColor(cr, cg, cb, ca)
         end
+
+        -- keymap
+        love.graphics.draw(
+            light.img,
+            x - light.img:getWidth() / 2 ,
+            y + r + 4
+        )
+
     end
 
 end
