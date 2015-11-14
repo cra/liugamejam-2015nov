@@ -10,17 +10,71 @@ sp1 = {x = 20, y = 100, img = nil,
         },
     lights_radius = 10,
     lights_color = {0, 255, 0, 255},
-    light_timer_max = 1
+    light_timer_max = 1, -- should be probably outside
+    idle_timer = nil,
 }
+idle_timer_max = 0.5
+idle_timer = nil
 
-function love.load(arg)
-    sp1.img = love.graphics.newImage("images/baby_kangaroo.png")
+-- light controls
+
+function turn_off_light(spelare, light_index)
+    spelare.lights[light_index].enabled = false
+    spelare.lights[light_index].timer = nil
+end
+
+function turn_on_light(spelare, light_index)
+    spelare.lights[light_index].enabled = true
+    spelare.lights[light_index].timer = spelare.light_timer_max
 end
 
 function toggle_light(spelare, light_index)
     cur_state = spelare.lights[light_index].enabled
-    spelare.lights[light_index].enabled = not spelare.lights[light_index].enabled
-    spelare.lights[light_index].timer = spelare.light_timer_max
+    if cur_state then
+        turn_off_light(spelare, light_index)
+    else
+        turn_on_light(spelare, light_index)
+    end
+end
+
+-- FSM actions that control the lights, nothing fancy
+function action1()
+    toggle_light(sp1, 1)
+end
+function action2()
+    toggle_light(sp1, 2)
+end
+
+function action_wrong_input()
+    print("Flashing the lights. Wrong input. Going to q0")
+    turn_off_light(sp1, 1)
+    turn_off_light(sp1, 2)
+end
+
+function action_move()
+    print("Got the combo right")
+end
+
+lights_sp1_state_transition_table = {
+-- old state   event      new state    action
+    {'q0', 'input_right', 'q1', action1},
+
+    {'q1', 'input_left', 'q2', action2},
+    {'q1', 'input_right', 'q3', action_wrong_input},
+
+    {'q2', 'idling', 'q4', action_move},
+
+    {'q3', 'input_right', 'q0', action_wrong_input},
+}
+
+-- Game logic
+function love.load(arg)
+    sp1.img = love.graphics.newImage("images/baby_kangaroo.png")
+
+    lights_sp1_fsm = FSM.new(lights_sp1_state_transition_table)
+    lights_sp1_fsm:set('q0')
+
+    sp1.idle_timer = 0
 end
 
 -- Updating
@@ -32,13 +86,13 @@ function love.update(dt)
     if love.keyboard.isDown("n", 'right') then
         controls.advance_right(sp1)
         if not sp1.lights[1].enabled then
-            toggle_light(sp1, 1)
+            lights_sp1_fsm:fire('input_right')
         end
     end
     if love.keyboard.isDown("h", 'left') then
         controls.advance_left(sp1)
         if not sp1.lights[2].enabled then
-            toggle_light(sp1, 2)
+            lights_sp1_fsm:fire('input_left')
         end
     end
 
@@ -79,11 +133,12 @@ function love.draw(dt)
     love.graphics.print("Run baby kangaroo, run", 300, 10)
     --love.graphics.setBackgroundColor(100, 100, 100)
     love.graphics.print("kangaroo at (" .. tostring(sp1.x) .. ", " .. tostring(sp1.y) .. ")", 300, 25)
+    love.graphics.print("Lights1 FSM state: " .. lights_sp1_fsm:get(), 300, 40)
 
     love.graphics.draw(sp1.img, sp1.x, sp1.y)
-    
-    for i = 1, 4 do
-        local x = sp1.lights[i].x
+
+    for i, light in ipairs(sp1.lights) do
+        local x = light.x
         local r = sp1.lights_radius
         love.graphics.circle('line', x, 10, r, 20)
 
