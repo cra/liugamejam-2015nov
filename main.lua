@@ -109,14 +109,6 @@ function love.update(dt)
         end
     end
 
-    if first_light_enabled then
-        first_light_timer = first_light_timer - (1 * dt)
-        if first_light_timer <= 0 then
-            first_light_enabled = false
-            first_light_timer = 0
-        end
-    end
-
     for i, light in ipairs(sp1.lights) do
         if light.enabled then
             light.timer = light.timer - (1 * dt)
