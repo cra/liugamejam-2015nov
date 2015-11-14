@@ -1,0 +1,3 @@
+[submodule "LuaFSM"]
+	path = LuaFSM
+	url = https://github.com/cornelisse/LuaFSM

@@ -1,13 +1,13 @@
---sp1 = Spelare:new{x = 20, y = 100}
 sp1 = {x = 20, y = 100, img = nil,
     lights = {
-            {x = 260, y = 10, enabled = false},
-            {x = 300, y = 10, enabled = false},
-            {x = 340, y = 10, enabled = true},
-            {x = 380, y = 10, enabled = false},
+            {x = 100, y = 10, enabled = false, timer = nil},
+            {x = 140, y = 10, enabled = false, timer = nil},
+            {x = 180, y = 10, enabled = false, timer = nil},
+            {x = 220, y = 10, enabled = false, timer = nil},
         },
     lights_radius = 10,
-    lights_color = {0, 255, 0, 255}
+    lights_color = {0, 255, 0, 255},
+    light_timer_max = 1
 }
 
 function love.load(arg)
@@ -23,6 +23,7 @@ end
 function toggle_light(spelare, light_index)
     cur_state = spelare.lights[light_index].enabled
     spelare.lights[light_index].enabled = not spelare.lights[light_index].enabled
+    spelare.lights[light_index].timer = spelare.light_timer_max
 end
 
 function advance_left(spelare)
@@ -39,10 +40,15 @@ function love.update(dt)
 
     if love.keyboard.isDown("n", 'right') then
         advance_right(sp1)
-        toggle_light(sp1, 1)
+        if not sp1.lights[1].enabled then
+            toggle_light(sp1, 1)
+        end
     end
     if love.keyboard.isDown("h", 'left') then
         advance_left(sp1)
+        if not sp1.lights[2].enabled then
+            toggle_light(sp1, 2)
+        end
     end
 
     if love.keyboard.isDown("c", 'up') then
@@ -51,13 +57,31 @@ function love.update(dt)
     if love.keyboard.isDown("t", 'down') then
         sp1.y = sp1.y + 10;
     end
+
+    if first_light_enabled then
+        first_light_timer = first_light_timer - (1 * dt)
+        if first_light_timer <= 0 then
+            first_light_enabled = false
+            first_light_timer = 0
+        end
+    end
+
+    for i, light in ipairs(sp1.lights) do
+        if light.enabled then
+            light.timer = light.timer - (1 * dt)
+            if light.timer < 0 then
+                toggle_light(sp1, i)
+            end
+        end
+    end
+
 end
 
 -- Drawing
 function love.draw(dt)
-    love.graphics.print("Run baby cangaroo run", 0, 10)
+    love.graphics.print("Run baby kangaroo, run", 300, 10)
     --love.graphics.setBackgroundColor(100, 100, 100)
-    love.graphics.print("cangaroo at (" .. tostring(sp1.x) .. ", " .. tostring(sp1.y) .. ")", 0, 25)
+    love.graphics.print("kangaroo at (" .. tostring(sp1.x) .. ", " .. tostring(sp1.y) .. ")", 300, 25)
 
     love.graphics.draw(sp1.img, sp1.x, sp1.y)
     
