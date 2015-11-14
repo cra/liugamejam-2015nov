@@ -1,3 +1,6 @@
+FSM = require("LuaFSM/fsm")
+controls = require("spelare_controls")
+
 sp1 = {x = 20, y = 100, img = nil,
     lights = {
             {x = 100, y = 10, enabled = false, timer = nil},
@@ -14,22 +17,10 @@ function love.load(arg)
     sp1.img = love.graphics.newImage("images/baby_kangaroo.png")
 end
 
-function advance_right(spelare)
-    if spelare.x < (love.graphics.getWidth() - spelare.img:getWidth()) then
-        spelare.x = spelare.x + 10;
-    end
-end
-
 function toggle_light(spelare, light_index)
     cur_state = spelare.lights[light_index].enabled
     spelare.lights[light_index].enabled = not spelare.lights[light_index].enabled
     spelare.lights[light_index].timer = spelare.light_timer_max
-end
-
-function advance_left(spelare)
-    if spelare.x > 0 then
-        spelare.x = spelare.x - 10;
-    end
 end
 
 -- Updating
@@ -39,13 +30,13 @@ function love.update(dt)
     end
 
     if love.keyboard.isDown("n", 'right') then
-        advance_right(sp1)
+        controls.advance_right(sp1)
         if not sp1.lights[1].enabled then
             toggle_light(sp1, 1)
         end
     end
     if love.keyboard.isDown("h", 'left') then
-        advance_left(sp1)
+        controls.advance_left(sp1)
         if not sp1.lights[2].enabled then
             toggle_light(sp1, 2)
         end
@@ -53,9 +44,15 @@ function love.update(dt)
 
     if love.keyboard.isDown("c", 'up') then
         sp1.y = sp1.y - 10;
+        if not sp1.lights[3].enabled then
+            toggle_light(sp1, 3)
+        end
     end
     if love.keyboard.isDown("t", 'down') then
         sp1.y = sp1.y + 10;
+        if not sp1.lights[4].enabled then
+            toggle_light(sp1, 4)
+        end
     end
 
     if first_light_enabled then
