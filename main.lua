@@ -96,30 +96,53 @@ lights_sp1_state_transition_table = {
     {'right_sequence', '*', 'initial', action_move},
 }
 
+function action_game_ends()
+    love.audio.play(staying_alive)
+end
+
+game_state_transition_table = {
+    {'in_game', 'finish', 'game_end', action_game_ends}
+}
 
 -- Init
 function love.load(arg)
     -- load assets
-    sp1.img = love.graphics.newImage("images/baby_kangaroo.png")
-    sp1.lights[1].img = love.graphics.newImage("images/right_arrow_key.png")
-    sp1.lights[2].img = love.graphics.newImage("images/left_arrow_key.png")
-    sp1.lights[3].img = love.graphics.newImage("images/up_arrow_key.png")
-    sp1.lights[4].img = love.graphics.newImage("images/down_arrow_key.png")
+    sp1.img = love.graphics.newImage("assets/baby_kangaroo.png")
+    sp1.lights[1].img = love.graphics.newImage("assets/right_arrow_key.png")
+    sp1.lights[2].img = love.graphics.newImage("assets/left_arrow_key.png")
+    sp1.lights[3].img = love.graphics.newImage("assets/up_arrow_key.png")
+    sp1.lights[4].img = love.graphics.newImage("assets/down_arrow_key.png")
 
     road = {}
-    road.img = love.graphics.newImage("images/road_itself.png")
+    road.img = love.graphics.newImage("assets/road_itself.png")
     road.y = (love.graphics.getHeight() - road.img:getHeight()) / 2
     road.img_width = road.img:getWidth()
+
+    the_end = {}
+    the_end.img = love.graphics.newImage("assets/the_end.png")
+    the_end.x = (love.graphics.getWidth() - the_end.img:getWidth()) / 2
+    the_end.y = (love.graphics.getHeight() - the_end.img:getHeight()) / 2
 
     -- Wind up our finite state machine
     lights_sp1_fsm = FSM.new(lights_sp1_state_transition_table)
     lights_sp1_fsm:set('initial')
+
+    game_fsm = FSM.new(game_state_transition_table)
+    game_fsm:set('in_game')
+    --game_fsm:set('finish')
+
+    staying_alive = love.audio.newSource("assets/StayinAlive.ogg")
 end
 
 -- Updating
 function love.update(dt)
     if love.keyboard.isDown('escape', 'q') then
         love.event.push('quit')
+    end
+
+    if game_fsm:get() == 'game_end' then
+        -- no updates, we won.
+        return
     end
 
     if lights_sp1_fsm:get() == 'right_sequence' then
@@ -166,59 +189,70 @@ function love.update(dt)
         end
     end
 
+    if sp1.x + sp1.step > (love.graphics.getWidth() - sp1.img:getWidth()) then
+        game_fsm:fire('finish')
+    end
+
 end
 
 -- Drawing
 function love.draw(dt)
     love.graphics.setBackgroundColor(238, 195, 154)
-    local cr, cg, cb, ca = love.graphics.getColor()
-    love.graphics.setColor(0, 0, 0, 255)
 
-    love.graphics.print("kangaroo at (" .. tostring(sp1.x) .. ", " .. tostring(sp1.y) .. ")", 600, 10)
-    love.graphics.print("Lights FSM state: " .. lights_sp1_fsm:get(), 600, 25)
-    love.graphics.setColor(cr, cg, cb, ca)
-
-    local x = 0
-    local Xmax = love.graphics.getWidth()
-    while x < Xmax do
-        love.graphics.draw(road.img, x, road.y)
-        x = x + road.img_width
-    end
-
-    love.graphics.draw(sp1.img, sp1.x, sp1.y)
-
-    -- draw all the lights and a keymap
-    for i, light in ipairs(sp1.lights) do
-        local x = light.x
-        local y = light.y
-        local r = sp1.lights_radius
-
-        -- lights border
+    if game_fsm:get() == "in_game" then
         local cr, cg, cb, ca = love.graphics.getColor()
-        love.graphics.setColor(sp1.lights_border_color)
-        love.graphics.circle('line', x, y, r, 20)
+        love.graphics.setColor(0, 0, 0, 255)
+
+        love.graphics.print("kangaroo at (" .. tostring(sp1.x) .. ", " .. tostring(sp1.y) .. ")", 600, 10)
+        love.graphics.print("Lights FSM: " .. lights_sp1_fsm:get() ..", " .. "Game FSM: " .. game_fsm:get(), 600, 25)
         love.graphics.setColor(cr, cg, cb, ca)
 
-        -- filling
-        if sp1.lights_wrong then
-            local cr, cg, cb, ca = love.graphics.getColor()
-            love.graphics.setColor(sp1.lights_color_wrong)
-            love.graphics.circle('fill', x, y, r - 2, 20)
-            love.graphics.setColor(cr, cg, cb, ca)
-        elseif sp1.lights[i].enabled then
-            local cr, cg, cb, ca = love.graphics.getColor()
-            love.graphics.setColor(sp1.lights_color_right)
-            love.graphics.circle('fill', x, y, r - 2, 20)
-            love.graphics.setColor(cr, cg, cb, ca)
+        local x = 0
+        local Xmax = love.graphics.getWidth()
+        while x < Xmax do
+            love.graphics.draw(road.img, x, road.y)
+            x = x + road.img_width
         end
 
-        -- keymap
-        love.graphics.draw(
-            light.img,
-            x - light.img:getWidth() / 2 ,
-            y + r + 4
-        )
+        love.graphics.draw(sp1.img, sp1.x, sp1.y)
 
+        -- draw all the lights and a keymap
+        for i, light in ipairs(sp1.lights) do
+            local x = light.x
+            local y = light.y
+            local r = sp1.lights_radius
+
+            -- lights border
+            local cr, cg, cb, ca = love.graphics.getColor()
+            love.graphics.setColor(sp1.lights_border_color)
+            love.graphics.circle('line', x, y, r, 20)
+            love.graphics.setColor(cr, cg, cb, ca)
+
+            -- filling
+            if sp1.lights_wrong then
+                local cr, cg, cb, ca = love.graphics.getColor()
+                love.graphics.setColor(sp1.lights_color_wrong)
+                love.graphics.circle('fill', x, y, r - 2, 20)
+                love.graphics.setColor(cr, cg, cb, ca)
+            elseif sp1.lights[i].enabled then
+                local cr, cg, cb, ca = love.graphics.getColor()
+                love.graphics.setColor(sp1.lights_color_right)
+                love.graphics.circle('fill', x, y, r - 2, 20)
+                love.graphics.setColor(cr, cg, cb, ca)
+            end
+
+            -- keymap
+            love.graphics.draw(
+                light.img,
+                x - light.img:getWidth() / 2 ,
+                y + r + 4
+            )
+
+        end
+    end
+
+    if game_fsm:get() == "game_end" then
+        love.graphics.draw(the_end.img, the_end.x, the_end.y)
     end
 
 end
