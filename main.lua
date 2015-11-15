@@ -1,17 +1,21 @@
 FSM = require("LuaFSM/fsm")
 controls = require("spelare_controls")
 
-sp1 = {x = 10, y = 128, step = 20, img = nil,
+sp1 = {x = 10, y = 128, step = 48, img = nil,
     lights = {
         {x = 100, y = 20, enabled = false, timer = nil, img = nil},
         {x = 160, y = 20, enabled = false, timer = nil, img = nil},
         {x = 220, y = 20, enabled = false, timer = nil, img = nil},
         {x = 280, y = 20, enabled = false, timer = nil, img = nil},
     },
+    lights_wrong = false,
+    lights_wrong_timer = nil,
     lights_radius = 16,
     lights_border_color = {100, 100, 100, 255},
-    lights_color = {0, 255, 0, 255},
-    light_timer_max = 1, -- should be probably outside
+    lights_color_right = {0, 255, 0, 255},
+    lights_color_wrong = {255, 0, 0, 255},
+    light_timer_max = 0.3, -- should be probably outside
+    lights_wrong_timer_max = 0.2, -- should be probably outside
 }
 
 -- light controls
@@ -50,27 +54,48 @@ function action4()
 end
 
 function action_wrong_input()
-    print("Flashing the lights. Wrong input. Going to 'initial'")
-    turn_off_light(sp1, 1)
-    turn_off_light(sp1, 2)
+    sp1.lights_wrong = true
+    sp1.lights_wrong_timer = sp1.lights_wrong_timer_max
+    for i, light in ipairs(sp1.lights) do
+        turn_off_light(sp1, i)
+    end
 end
 
 function action_move()
     controls.advance_right(sp1)
 end
 
+function action_do_nothing()
+end
+
 lights_sp1_state_transition_table = {
 -- old state   event      new state    action
     {'initial', 'input_right', 'q1', action1},
+    {'initial', 'idling', 'initial', action_do_nothing},
+    {'initial', 'input_down', 'initial', action_wrong_input},
+    {'initial', 'input_left', 'initial', action_wrong_input},
 
     {'q1', 'input_left', 'q2', action2},
-    {'q1', 'input_right', 'q3', action_wrong_input},
+    {'q1', 'idling', 'initial', action_wrong_input},
+    {'q1', 'input_right', 'initial', action_wrong_input},
+    {'q1', 'input_down', 'initial', action_wrong_input},
+    {'q1', 'input_up', 'initial', action_wrong_input},
 
     {'q2', 'input_up', 'q3', action3},
-    {'q3', 'input_down', 'right_sequence', action4},
+    {'q2', 'idling', 'initial', action_wrong_input},
+    {'q2', 'input_right', 'initial', action_wrong_input},
+    {'q2', 'input_down', 'initial', action_wrong_input},
+    {'q2', 'input_left', 'initial', action_wrong_input},
 
-    {'right_sequence', 'idling', 'initial', action_move},
+    {'q3', 'input_down', 'right_sequence', action4},
+    {'q3', 'idling', 'initial', action_wrong_input},
+    {'q3', 'input_right', 'initial', action_wrong_input},
+    {'q3', 'input_up', 'initial', action_wrong_input},
+    {'q3', 'input_left', 'initial', action_wrong_input},
+
+    {'right_sequence', '*', 'initial', action_move},
 }
+
 
 -- Init
 function love.load(arg)
@@ -105,20 +130,22 @@ function love.update(dt)
         if not sp1.lights[1].enabled then
             lights_sp1_fsm:fire('input_right')
         end
-    end
-    if love.keyboard.isDown("h", 'left') then
+    elseif love.keyboard.isDown("h", 'left') then
         if not sp1.lights[2].enabled then
             lights_sp1_fsm:fire('input_left')
         end
-    end
-    if love.keyboard.isDown("c", 'up') then
+    elseif love.keyboard.isDown("c", 'up') then
         if not sp1.lights[3].enabled then
             lights_sp1_fsm:fire('input_up')
         end
-    end
-    if love.keyboard.isDown("t", 'down') then
+    elseif love.keyboard.isDown("t", 'down') then
         if not sp1.lights[4].enabled then
             lights_sp1_fsm:fire('input_down')
+        end
+    else
+        -- if all lights are off -- fire idling
+        if not (sp1.lights[1].enabled or sp1.lights[2].enabled or sp1.lights[3].enabled or sp1.lights[4].enabled) then
+            lights_sp1_fsm:fire('idling')
         end
     end
 
@@ -128,6 +155,14 @@ function love.update(dt)
             if light.timer < 0 then
                 toggle_light(sp1, i)
             end
+        end
+    end
+
+    if sp1.lights_wrong then
+        sp1.lights_wrong_timer = sp1.lights_wrong_timer - (1 * dt)
+        if sp1.lights_wrong_timer < 0 then
+            sp1.lights_wrong_timer = 0
+            sp1.lights_wrong = false
         end
     end
 
@@ -165,9 +200,14 @@ function love.draw(dt)
         love.graphics.setColor(cr, cg, cb, ca)
 
         -- filling
-        if sp1.lights[i].enabled then
+        if sp1.lights_wrong then
             local cr, cg, cb, ca = love.graphics.getColor()
-            love.graphics.setColor(sp1.lights_color)
+            love.graphics.setColor(sp1.lights_color_wrong)
+            love.graphics.circle('fill', x, y, r - 2, 20)
+            love.graphics.setColor(cr, cg, cb, ca)
+        elseif sp1.lights[i].enabled then
+            local cr, cg, cb, ca = love.graphics.getColor()
+            love.graphics.setColor(sp1.lights_color_right)
             love.graphics.circle('fill', x, y, r - 2, 20)
             love.graphics.setColor(cr, cg, cb, ca)
         end
